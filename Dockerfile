@@ -21,6 +21,7 @@ RUN update-locale LANG=C.UTF-8
 
 # Update cache and install dependencies
 RUN apt-get update -y && apt-get install -y \
+    nano \
     apache2 \
     apache2-dev \
     autoconf \
@@ -141,7 +142,7 @@ COPY ./build/drop_indexes.sql /usr/share/mapnik/openstreetmap-carto/
 #So we rely on the last commit of the master branch at the time of this Dockerfile
 ENV MOD_TILE_VERSION e25bfdba1c1f2103c69529f1a30b22a14ce311f1
 ENV MOD_TILE_PARALLEL_BUILD 4
-RUN cd /tmp && git clone https://github.com/openstreetmap/mod_tile.git && \
+RUN cd /tmp && git clone https://github.com/saveryanov/mod_tile.git && \
     cd /tmp/mod_tile && \
     git reset --hard $MOD_TILE_VERSION && \
     ./autogen.sh && \
@@ -150,6 +151,11 @@ RUN cd /tmp && git clone https://github.com/openstreetmap/mod_tile.git && \
     make install && \
     make install-mod_tile && \
     ldconfig && \
+    ./openstreetmap-tiles-update-expire 2018-10-11 && \
+    cp openstreetmap-tiles-update-expire /usr/local/bin/openstreetmap-tiles-update-expire && \
+    cp osmosis-db_replag /usr/local/bin/osmosis-db_replag && \
+    chmod +x /usr/local/bin/openstreetmap-tiles-update-expire && \
+    chmod +x /usr/local/bin/osmosis-db_replag && \
     cd /tmp && rm -rf /tmp/mod_tile
 
 RUN cp -p /usr/local/etc/renderd.conf /usr/local/etc/renderd.conf.orig
@@ -158,6 +164,17 @@ COPY ./build/renderd.conf /usr/local/etc/
 # Create the files required for the mod_tile system to run
 RUN mkdir /var/run/renderd && chown www-data: /var/run/renderd
 RUN mkdir /var/lib/mod_tile && chown www-data /var/lib/mod_tile
+
+#RUN /tmp/openstreetmap-tiles-update-expire.sh 2018-10-11
+#COPY ./build/osmosis-configuration.txt /var/lib/mod_tile/.osmosis/configuration.txt
+
+# wget https://raw.githubusercontent.com/openstreetmap/mod_tile/master/openstreetmap-tiles-update-expire
+# chmod a+x ./openstreetmap-tiles-update-expire
+# sudo mv ./openstreetmap-tiles-update-expire /usr/bin
+# wget https://raw.githubusercontent.com/openstreetmap/mod_tile/master/osmosis-db_replag
+# chmod a+x ./osmosis-db_replag
+# sudo mv ./osmosis-db_replag /usr/local/bin
+
 
 # Replace default apache index page with Leaflet demo
 COPY ./build/index.html /var/www/html/
